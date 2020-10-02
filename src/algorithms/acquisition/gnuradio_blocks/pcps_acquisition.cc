@@ -71,7 +71,7 @@ pcps_acquisition_sptr pcps_make_acquisition(const Acq_Conf& conf_)
 
 pcps_acquisition::pcps_acquisition(const Acq_Conf& conf_) : gr::block("pcps_acquisition",
                                                                 gr::io_signature::make(1, 1, conf_.it_size),
-                                                                gr::io_signature::make(0, 0, conf_.it_size))
+                                                                gr::io_signature::make(1, 1, sizeof(Gnss_Synchro)))
 {
     this->message_port_register_out(pmt::mp("events"));
 
@@ -385,6 +385,12 @@ void pcps_acquisition::send_positive_acquisition()
         {
             this->message_port_pub(pmt::mp("events"), pmt::from_long(1));
         }
+
+    // Push current Gnss_Synchro to monitor queue
+    Gnss_Synchro current_synchro_data = Gnss_Synchro();
+    current_synchro_data = *d_gnss_synchro;
+    d_monitor_queue.push(current_synchro_data);
+    LOG(INFO) << "Pushed gnss_synchro for satellite " << current_synchro_data.System << " " << current_synchro_data.PRN;
 }
 
 
@@ -903,7 +909,7 @@ void pcps_acquisition::calculate_threshold()
 int pcps_acquisition::general_work(int noutput_items __attribute__((unused)),
     gr_vector_int& ninput_items,
     gr_vector_const_void_star& input_items,
-    gr_vector_void_star& output_items __attribute__((unused)))
+    gr_vector_void_star& output_items)
 {
     /*
      * By J.Arribas, L.Esteve and M.Molina
@@ -1010,5 +1016,19 @@ int pcps_acquisition::general_work(int noutput_items __attribute__((unused)),
                 break;
             }
         }
+
+    auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
+    if (!d_monitor_queue.empty())
+        {
+            int num_gnss_synchro_objects = d_monitor_queue.size();
+            for (int i = 0; i < num_gnss_synchro_objects; ++i) {
+                Gnss_Synchro current_synchro_data = d_monitor_queue.front();
+                d_monitor_queue.pop();
+                *out[i] = current_synchro_data;
+                LOG(INFO) << "Sent gnss_synchro for satellite " << current_synchro_data.System << " " << current_synchro_data.PRN;
+            }
+            return num_gnss_synchro_objects;
+        }
+
     return 0;
 }

@@ -65,6 +65,7 @@ public:
     gr::basic_block_sptr get_left_block() override;      //!< gets the gnuradio tracking block pointer
     gr::basic_block_sptr get_left_block_trk() override;  //!< gets the gnuradio tracking block pointer
     gr::basic_block_sptr get_left_block_acq() override;  //!< gets the gnuradio tracking block pointer
+    gr::basic_block_sptr get_right_block_acq() override;  //!< gets the gnuradio tracking block pointer
     gr::basic_block_sptr get_right_block() override;
 
     inline std::string role() override { return role_; }

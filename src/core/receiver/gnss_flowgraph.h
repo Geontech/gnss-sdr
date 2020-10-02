@@ -191,6 +191,7 @@ private:
     std::vector<gr::blocks::null_sink::sptr> null_sinks_;
 
     gr::basic_block_sptr GnssSynchroMonitor_;
+    gr::basic_block_sptr GnssSynchroAcquisitionMonitor_;
     channel_status_msg_receiver_sptr channels_status_;  // class that receives and stores the current status of the receiver channels
     gnss_sdr_sample_counter_sptr ch_out_sample_counter_;
 #if ENABLE_FPGA
