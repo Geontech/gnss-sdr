@@ -386,11 +386,10 @@ void pcps_acquisition::send_positive_acquisition()
             this->message_port_pub(pmt::mp("events"), pmt::from_long(1));
         }
 
-    // Push current Gnss_Synchro to monitor queue
+    // Cpy and push current Gnss_Synchro to monitor queue
     Gnss_Synchro current_synchro_data = Gnss_Synchro();
     current_synchro_data = *d_gnss_synchro;
     d_monitor_queue.push(current_synchro_data);
-    LOG(INFO) << "Pushed gnss_synchro for satellite " << current_synchro_data.System << " " << current_synchro_data.PRN;
 }
 
 
@@ -1017,6 +1016,7 @@ int pcps_acquisition::general_work(int noutput_items __attribute__((unused)),
             }
         }
 
+    // Send outputs to the monitor
     auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
     if (!d_monitor_queue.empty())
         {
@@ -1025,7 +1025,6 @@ int pcps_acquisition::general_work(int noutput_items __attribute__((unused)),
                 Gnss_Synchro current_synchro_data = d_monitor_queue.front();
                 d_monitor_queue.pop();
                 *out[i] = current_synchro_data;
-                LOG(INFO) << "Sent gnss_synchro for satellite " << current_synchro_data.System << " " << current_synchro_data.PRN;
             }
             return num_gnss_synchro_objects;
         }
