@@ -71,7 +71,7 @@ pcps_acquisition_sptr pcps_make_acquisition(const Acq_Conf& conf_)
 
 pcps_acquisition::pcps_acquisition(const Acq_Conf& conf_) : gr::block("pcps_acquisition",
                                                                 gr::io_signature::make(1, 1, conf_.it_size),
-                                                                gr::io_signature::make(1, 1, sizeof(Gnss_Synchro)))
+                                                                gr::io_signature::make(0, 1, sizeof(Gnss_Synchro)))
 {
     this->message_port_register_out(pmt::mp("events"));
 
@@ -386,10 +386,13 @@ void pcps_acquisition::send_positive_acquisition()
             this->message_port_pub(pmt::mp("events"), pmt::from_long(1));
         }
 
-    // Cpy and push current Gnss_Synchro to monitor queue
-    Gnss_Synchro current_synchro_data = Gnss_Synchro();
-    current_synchro_data = *d_gnss_synchro;
-    d_monitor_queue.push(current_synchro_data);
+    // Copy and push current Gnss_Synchro to monitor queue
+    if (d_acq_parameters.enable_monitor_output)
+        {
+            Gnss_Synchro current_synchro_data = Gnss_Synchro();
+            current_synchro_data = *d_gnss_synchro;
+            d_monitor_queue.push(current_synchro_data);
+        }
 }
 
 
@@ -1017,16 +1020,19 @@ int pcps_acquisition::general_work(int noutput_items __attribute__((unused)),
         }
 
     // Send outputs to the monitor
-    auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
-    if (!d_monitor_queue.empty())
+    if (d_acq_parameters.enable_monitor_output)
         {
-            int num_gnss_synchro_objects = d_monitor_queue.size();
-            for (int i = 0; i < num_gnss_synchro_objects; ++i) {
-                Gnss_Synchro current_synchro_data = d_monitor_queue.front();
-                d_monitor_queue.pop();
-                *out[i] = current_synchro_data;
-            }
-            return num_gnss_synchro_objects;
+            auto **out = reinterpret_cast<Gnss_Synchro **>(&output_items[0]);
+            if (!d_monitor_queue.empty())
+                {
+                    int num_gnss_synchro_objects = d_monitor_queue.size();
+                    for (int i = 0; i < num_gnss_synchro_objects; ++i) {
+                        Gnss_Synchro current_synchro_data = d_monitor_queue.front();
+                        d_monitor_queue.pop();
+                        *out[i] = current_synchro_data;
+                    }
+                    return num_gnss_synchro_objects;
+                }
         }
 
     return 0;
