@@ -60,6 +60,7 @@ void gnss_synchro_monitor::forecast(int noutput_items __attribute__((unused)), g
 {
     for (int32_t channel_index = 0; channel_index < d_nchannels; channel_index++)
         {
+            // Set the required number of inputs to 0 so that a lone input on any channel can be pushed to UDP
             ninput_items_required[channel_index] = 0;
         }
 }
@@ -67,31 +68,27 @@ void gnss_synchro_monitor::forecast(int noutput_items __attribute__((unused)), g
 int gnss_synchro_monitor::general_work(int noutput_items __attribute__((unused)), gr_vector_int& ninput_items,
     gr_vector_const_void_star& input_items, gr_vector_void_star& output_items __attribute__((unused)))
 {
-    std::cout << "Monitor general_work() ENTER" << std::endl;
     // Get the input buffer pointer
     const auto** in = reinterpret_cast<const Gnss_Synchro**>(&input_items[0]);
 
     // Loop through each input stream channel
     for (int channel_index = 0; channel_index < d_nchannels; channel_index++)
         {
-            std::cout << "Monitor general_work channel_index = " << channel_index << " ninput_items = " << ninput_items[channel_index] << std::endl;
-
             // Loop through each item in each input stream channel
-//            int count = 0;
+            int count = 0;
             for (int item_index = 0; item_index < ninput_items[channel_index]; item_index++)
                 {
                     // Use the count variable to limit how many items are sent per channel
-//                    count++;
-//                    if (count >= d_decimation_factor)
-//                        {
+                    count++;
+                    if (count >= d_decimation_factor)
+                        {
                             // Convert to a vector and write to the UDP sink
                             std::vector<Gnss_Synchro> stocks;
                             stocks.push_back(in[channel_index][item_index]);
                             udp_sink_ptr->write_gnss_synchro(stocks);
-                            std::cout << "Wrote gnss_synchro to UDP for satellite " << in[channel_index][item_index].System << " " << in[channel_index][item_index].PRN << ", channel_index=" << channel_index << ", ninput_items=" << ninput_items[channel_index] << std::endl;
-//                            // Reset count variable
-//                            count = 0;
-//                        }
+                            // Reset count variable
+                            count = 0;
+                        }
                 }
             // Consume the number of items for the input stream channel
             consume(channel_index, ninput_items[channel_index]);
