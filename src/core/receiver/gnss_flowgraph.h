@@ -241,6 +241,7 @@ private:
     bool running_;
     bool multiband_;
     bool enable_monitor_;
+    bool enable_acquisition_monitor_;
 };
 
 #endif  // GNSS_SDR_GNSS_FLOWGRAPH_H

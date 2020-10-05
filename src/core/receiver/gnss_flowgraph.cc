@@ -706,19 +706,22 @@ void GNSSFlowgraph::connect()
         }
 
     // GNSS SYNCHRO ACQUISITION MONITOR
-    try
+    if (enable_acquisition_monitor_)
         {
-            for (int i = 0; i < channels_count_; i++)
+            try
                 {
-                    top_block_->connect(channels_.at(i)->get_right_block_acq(), 0, GnssSynchroAcquisitionMonitor_, i);
+                    for (int i = 0; i < channels_count_; i++)
+                        {
+                            top_block_->connect(channels_.at(i)->get_right_block_acq(), 0, GnssSynchroAcquisitionMonitor_, i);
+                        }
                 }
-        }
-    catch (const std::exception& e)
-        {
-            LOG(WARNING) << "Can't connect acquisition intermediate outputs to Monitor block";
-            LOG(ERROR) << e.what();
-            top_block_->disconnect_all();
-            return;
+            catch (const std::exception& e)
+                {
+                    LOG(WARNING) << "Can't connect acquisition intermediate outputs to Monitor block";
+                    LOG(ERROR) << e.what();
+                    top_block_->disconnect_all();
+                    return;
+                }
         }
 #ifndef ENABLE_FPGA
     // Activate acquisition in enabled channels
@@ -962,7 +965,10 @@ void GNSSFlowgraph::disconnect()
                         {
                             top_block_->disconnect(observables_->get_right_block(), i, GnssSynchroMonitor_, i);
                         }
-                    top_block_->disconnect(channels_.at(i)->get_right_block_acq(), 0, GnssSynchroAcquisitionMonitor_, i);
+                    if (enable_acquisition_monitor_)
+                        {
+                            top_block_->disconnect(channels_.at(i)->get_right_block_acq(), 0, GnssSynchroAcquisitionMonitor_, i);
+                        }
                     top_block_->msg_disconnect(channels_.at(i)->get_right_block(), pmt::mp("telemetry"), pvt_->get_left_block(), pmt::mp("telemetry"));
                 }
             top_block_->msg_disconnect(pvt_->get_left_block(), pmt::mp("pvt_to_observables"), observables_->get_right_block(), pmt::mp("pvt_to_observables"));
@@ -1601,18 +1607,20 @@ void GNSSFlowgraph::init()
      * Instantiate the receiver monitor block, if required
      */
     enable_monitor_ = configuration_->property("Monitor.enable_monitor", false);
-    bool enable_protobuf = configuration_->property("Monitor.enable_protobuf", true);
-    if (configuration_->property("PVT.enable_protobuf", false) == true)
-        {
-            enable_protobuf = true;
-        }
-    std::string address_string = configuration_->property("Monitor.client_addresses", std::string("127.0.0.1"));
-    std::vector<std::string> udp_addr_vec = split_string(address_string, '_');
-    std::sort(udp_addr_vec.begin(), udp_addr_vec.end());
-    udp_addr_vec.erase(std::unique(udp_addr_vec.begin(), udp_addr_vec.end()), udp_addr_vec.end());
-
     if (enable_monitor_)
         {
+            // Retrieve monitor properties
+            bool enable_protobuf = configuration_->property("Monitor.enable_protobuf", true);
+            if (configuration_->property("PVT.enable_protobuf", false) == true)
+                {
+                    enable_protobuf = true;
+                }
+            std::string address_string = configuration_->property("Monitor.client_addresses", std::string("127.0.0.1"));
+            std::vector<std::string> udp_addr_vec = split_string(address_string, '_');
+            std::sort(udp_addr_vec.begin(), udp_addr_vec.end());
+            udp_addr_vec.erase(std::unique(udp_addr_vec.begin(), udp_addr_vec.end()), udp_addr_vec.end());
+
+            // Instantiate monitor object
             GnssSynchroMonitor_ = gnss_synchro_make_monitor(channels_count_,
                 configuration_->property("Monitor.decimation_factor", 1),
                 configuration_->property("Monitor.udp_port", 1234),
@@ -1620,24 +1628,27 @@ void GNSSFlowgraph::init()
         }
 
     /*
-     * Instantiate the receiver acquisition monitor block
-     * NOTE: Always instantiated to satisfy acquisition block output connection
+     * Instantiate the receiver acquisition monitor block, if required
      */
-    //enable_monitor_ = configuration_->property("AcquisitionMonitor.enable_monitor", false);
-    bool acq_enable_protobuf = configuration_->property("AcquisitionMonitor.enable_protobuf", true);
-    if (configuration_->property("PVT.enable_protobuf", false) == true)
+    enable_acquisition_monitor_ = configuration_->property("AcquisitionMonitor.enable_monitor", false);
+    if (enable_acquisition_monitor_)
         {
-            acq_enable_protobuf = true;
-        }
-    std::string acq_address_string = configuration_->property("AcquisitionMonitor.client_addresses", std::string("127.0.0.1"));
-    std::vector<std::string> acq_udp_addr_vec = split_string(acq_address_string, '_');
-    std::sort(acq_udp_addr_vec.begin(), acq_udp_addr_vec.end());
-    acq_udp_addr_vec.erase(std::unique(acq_udp_addr_vec.begin(), acq_udp_addr_vec.end()), acq_udp_addr_vec.end());
+            // Retrieve monitor properties
+            bool enable_protobuf = configuration_->property("AcquisitionMonitor.enable_protobuf", true);
+            if (configuration_->property("PVT.enable_protobuf", false) == true)
+                {
+                    enable_protobuf = true;
+                }
+            std::string address_string = configuration_->property("AcquisitionMonitor.client_addresses", std::string("127.0.0.1"));
+            std::vector<std::string> udp_addr_vec = split_string(address_string, '_');
+            std::sort(udp_addr_vec.begin(), udp_addr_vec.end());
+            udp_addr_vec.erase(std::unique(udp_addr_vec.begin(), udp_addr_vec.end()), udp_addr_vec.end());
 
-    GnssSynchroAcquisitionMonitor_ = gnss_synchro_make_monitor(channels_count_,
-        configuration_->property("AcquisitionMonitor.decimation_factor", 1),
-        configuration_->property("AcquisitionMonitor.udp_port", 1235),
-        acq_udp_addr_vec, acq_enable_protobuf);
+            GnssSynchroAcquisitionMonitor_ = gnss_synchro_make_monitor(channels_count_,
+                configuration_->property("AcquisitionMonitor.decimation_factor", 1),
+                configuration_->property("AcquisitionMonitor.udp_port", 1235),
+                udp_addr_vec, enable_protobuf);
+        }
 
 }
 
