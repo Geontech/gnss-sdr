@@ -41,6 +41,7 @@ class ChannelInterface : public GNSSBlockInterface
 {
 public:
     virtual gr::basic_block_sptr get_left_block_trk() = 0;
+    virtual gr::basic_block_sptr get_right_block_trk() = 0;
     virtual gr::basic_block_sptr get_left_block_acq() = 0;
     virtual gr::basic_block_sptr get_right_block_acq() = 0;
     virtual gr::basic_block_sptr get_left_block() = 0;
