@@ -170,6 +170,10 @@ gr::basic_block_sptr Channel::get_left_block_trk()
     return trk_->get_left_block();
 }
 
+gr::basic_block_sptr Channel::get_right_block_trk()
+{
+    return trk_->get_right_block();
+}
 
 gr::basic_block_sptr Channel::get_left_block_acq()
 {

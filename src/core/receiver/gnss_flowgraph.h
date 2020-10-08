@@ -192,6 +192,7 @@ private:
 
     gr::basic_block_sptr GnssSynchroMonitor_;
     gr::basic_block_sptr GnssSynchroAcquisitionMonitor_;
+    gr::basic_block_sptr GnssSynchroTrackingMonitor_;
     channel_status_msg_receiver_sptr channels_status_;  // class that receives and stores the current status of the receiver channels
     gnss_sdr_sample_counter_sptr ch_out_sample_counter_;
 #if ENABLE_FPGA
@@ -242,6 +243,7 @@ private:
     bool multiband_;
     bool enable_monitor_;
     bool enable_acquisition_monitor_;
+    bool enable_tracking_monitor_;
 };
 
 #endif  // GNSS_SDR_GNSS_FLOWGRAPH_H
